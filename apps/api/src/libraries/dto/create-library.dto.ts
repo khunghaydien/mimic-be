@@ -8,13 +8,18 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { Trim } from "../../auth/dto/transforms";
+import { Trim, TrimOptional } from "../../auth/dto/transforms";
 
 export class CreateLibraryQuestionDto {
   @Trim()
   @IsString()
   @MinLength(1)
   content!: string;
+
+  @IsOptional()
+  @TrimOptional()
+  @IsString()
+  hint?: string;
 }
 
 export class CreateLibraryDto {

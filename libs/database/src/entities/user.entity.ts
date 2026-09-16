@@ -23,9 +23,9 @@ export class User {
   @Column({ name: "avatar_url", type: "varchar", length: 2048, nullable: true })
   avatarUrl!: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt!: Date;
 }

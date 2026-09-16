@@ -17,6 +17,7 @@ export class DatabaseModule {
           type: "postgres",
           url,
           entities: [...DATABASE_ENTITIES],
+          useUTC: true,
           synchronize: false,
           logging: false,
         }),

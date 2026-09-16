@@ -12,6 +12,7 @@ const dataSource = new DataSource({
   url,
   entities: [...DATABASE_ENTITIES],
   migrations: ["libs/database/migrations/*.{ts,js}"],
+  useUTC: true,
   synchronize: false,
   logging: false,
 });

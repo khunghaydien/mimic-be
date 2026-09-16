@@ -19,6 +19,8 @@ export class LibrariesQueryService {
 
     const qb = this.topicsRepository
       .createQueryBuilder("topic")
+      .leftJoin("topic.creator", "creator")
+      .addSelect(["creator.id", "creator.name"])
       .where("topic.creatorId = :creatorId", { creatorId })
       .orderBy("topic.createdAt", "DESC")
       .skip((page - 1) * limit)
@@ -37,19 +39,23 @@ export class LibrariesQueryService {
       items: topics.map((topic) => ({
         id: topic.id,
         title: topic.title,
-        creatorId: topic.creatorId,
+        creator: topic.creator?.name ?? "",
         questionCount: questionCounts.get(topic.id) ?? 0,
-        createdAt: topic.createdAt,
-        updatedAt: topic.updatedAt,
+        createdAt: this.toUtcIso(topic.createdAt),
+        updatedAt: this.toUtcIso(topic.updatedAt),
       })),
       meta: { page, limit, total },
     };
   }
 
   async getById(id: string, creatorId: string) {
-    const topic = await this.topicsRepository.findOne({
-      where: { id, creatorId },
-    });
+    const topic = await this.topicsRepository
+      .createQueryBuilder("topic")
+      .leftJoin("topic.creator", "creator")
+      .addSelect(["creator.id", "creator.name"])
+      .where("topic.id = :id", { id })
+      .andWhere("topic.creatorId = :creatorId", { creatorId })
+      .getOne();
 
     if (!topic) {
       throw new NotFoundException("Library not found");
@@ -60,10 +66,10 @@ export class LibrariesQueryService {
     return {
       id: topic.id,
       title: topic.title,
-      creatorId: topic.creatorId,
+      creator: topic.creator?.name ?? "",
       questions: questions.map((question) => this.toQuestion(question)),
-      createdAt: topic.createdAt,
-      updatedAt: topic.updatedAt,
+      createdAt: this.toUtcIso(topic.createdAt),
+      updatedAt: this.toUtcIso(topic.updatedAt),
     };
   }
 
@@ -95,12 +101,17 @@ export class LibrariesQueryService {
     return counts;
   }
 
-  private toQuestion(question: Question) {
+  toQuestion(question: Question) {
     return {
       id: question.id,
       content: question.content,
-      createdAt: question.createdAt,
-      updatedAt: question.updatedAt,
+      hint: question.hint,
+      createdAt: this.toUtcIso(question.createdAt),
+      updatedAt: this.toUtcIso(question.updatedAt),
     };
+  }
+
+  private toUtcIso(date: Date): string {
+    return new Date(date).toISOString();
   }
 }

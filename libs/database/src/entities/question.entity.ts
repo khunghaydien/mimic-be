@@ -17,6 +17,9 @@ export class Question {
   @Column({ type: "text" })
   content!: string;
 
+  @Column({ type: "text", nullable: true })
+  hint!: string | null;
+
   @Column({ name: "topic_id", type: "uuid" })
   topicId!: string;
 
@@ -24,9 +27,9 @@ export class Question {
   @JoinColumn({ name: "topic_id" })
   topic!: Topic;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt!: Date;
 }

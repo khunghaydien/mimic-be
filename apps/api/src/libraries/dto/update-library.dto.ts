@@ -2,13 +2,30 @@ import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
+  IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { Trim } from "../../auth/dto/transforms";
-import { CreateLibraryQuestionDto } from "./create-library.dto";
+import { Trim, TrimOptional } from "../../auth/dto/transforms";
+
+export class UpdateLibraryQuestionDto {
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @Trim()
+  @IsString()
+  @MinLength(1)
+  content!: string;
+
+  @IsOptional()
+  @TrimOptional()
+  @IsString()
+  hint?: string;
+}
 
 export class UpdateLibraryDto {
   @Trim()
@@ -20,6 +37,6 @@ export class UpdateLibraryDto {
   @IsArray()
   @ArrayMaxSize(500)
   @ValidateNested({ each: true })
-  @Type(() => CreateLibraryQuestionDto)
-  questions!: CreateLibraryQuestionDto[];
+  @Type(() => UpdateLibraryQuestionDto)
+  questions!: UpdateLibraryQuestionDto[];
 }
