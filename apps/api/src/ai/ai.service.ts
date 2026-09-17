@@ -7,6 +7,8 @@ import {
   getOpenAiApiKey,
   getOpenAiBaseUrl,
   getOpenAiChatModel,
+  getOpenAiTtsModel,
+  getOpenAiTtsVoice,
 } from "./ai.config";
 import {
   LIBRARY_QUESTION_KEYS,
@@ -30,6 +32,45 @@ export class AiService {
       user,
     });
     return this.parseLibraryQuestions(content);
+  }
+
+  async textToSpeech(text: string): Promise<Buffer> {
+    let apiKey: string;
+    try {
+      apiKey = getOpenAiApiKey();
+    } catch {
+      throw new ServiceUnavailableException("OpenAI is not configured");
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${getOpenAiBaseUrl()}/audio/speech`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: getOpenAiTtsModel(),
+          voice: getOpenAiTtsVoice(),
+          input: text,
+          response_format: "mp3",
+        }),
+      });
+    } catch {
+      throw new BadGatewayException("OpenAI speech request failed");
+    }
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      throw new BadGatewayException(
+        payload.error?.message || "OpenAI speech request failed",
+      );
+    }
+
+    return Buffer.from(await response.arrayBuffer());
   }
 
   private async completeChat(input: {

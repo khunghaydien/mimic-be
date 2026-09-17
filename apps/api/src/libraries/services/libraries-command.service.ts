@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Question, Topic } from "@app/database";
 import { Repository } from "typeorm";
+import { AiService } from "../../ai";
+import { StorageService } from "../../storage";
 import { CreateLibraryDto } from "../dto/create-library.dto";
 import { UpdateLibraryDto } from "../dto/update-library.dto";
 import { UpdateQuestionDto } from "../dto/update-question.dto";
@@ -16,11 +18,13 @@ export class LibrariesCommandService {
     @InjectRepository(Question)
     private readonly questionsRepository: Repository<Question>,
     private readonly librariesQueryService: LibrariesQueryService,
+    private readonly aiService: AiService,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(creatorId: string, dto: CreateLibraryDto) {
-    const topicId = await this.topicsRepository.manager.transaction(
-      async (manager) => {
+    const { topicId, questions } =
+      await this.topicsRepository.manager.transaction(async (manager) => {
         const topic = manager.create(Topic, {
           title: dto.title,
           creatorId,
@@ -38,9 +42,10 @@ export class LibrariesCommandService {
           await manager.save(questions);
         }
 
-        return saved.id;
-      },
-    );
+        return { topicId: saved.id, questions };
+      });
+
+    await this.syncQuestionsAudio(topicId, questions);
 
     return this.librariesQueryService.getById(topicId, creatorId);
   }
@@ -96,6 +101,11 @@ export class LibrariesCommandService {
       }
     });
 
+    const questions = await this.questionsRepository.find({
+      where: { topicId: id },
+    });
+    await this.syncQuestionsAudio(id, questions);
+
     return this.librariesQueryService.getById(id, creatorId);
   }
 
@@ -117,8 +127,9 @@ export class LibrariesCommandService {
     if (dto.hint !== undefined) {
       question.hint = dto.hint.trim() === "" ? null : dto.hint.trim();
     }
-    const saved = await this.questionsRepository.save(question);
-    return this.librariesQueryService.toQuestion(saved);
+    await this.questionsRepository.save(question);
+    await this.syncQuestionAudio(libraryId, question);
+    return this.librariesQueryService.toQuestion(question);
   }
 
   async removeQuestion(
@@ -145,6 +156,31 @@ export class LibrariesCommandService {
     });
 
     return { id };
+  }
+
+  private async syncQuestionsAudio(libraryId: string, questions: Question[]) {
+    for (const question of questions) {
+      await this.syncQuestionAudio(libraryId, question);
+    }
+  }
+
+  private async syncQuestionAudio(libraryId: string, question: Question) {
+    const spoken = this.buildSpokenText(question.content, question.hint);
+    const audio = await this.aiService.textToSpeech(spoken);
+    question.audioUrl = await this.storageService.upload({
+      key: `libraries/${libraryId}/questions/${question.id}.mp3`,
+      body: audio,
+      contentType: "audio/mpeg",
+    });
+    await this.questionsRepository.save(question);
+  }
+
+  private buildSpokenText(content: string, hint: string | null): string {
+    const parts = [`Question. ${content.trim()}`];
+    if (hint?.trim()) {
+      parts.push(`Hint. ${hint.trim()}`);
+    }
+    return parts.join("\n\n");
   }
 
   private async getOwnedTopic(id: string, creatorId: string) {

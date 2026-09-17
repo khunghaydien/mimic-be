@@ -106,6 +106,7 @@ export class LibrariesQueryService {
       id: question.id,
       content: question.content,
       hint: question.hint,
+      audioUrl: question.audioUrl,
       createdAt: this.toUtcIso(question.createdAt),
       updatedAt: this.toUtcIso(question.updatedAt),
     };

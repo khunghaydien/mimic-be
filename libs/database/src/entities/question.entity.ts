@@ -20,6 +20,9 @@ export class Question {
   @Column({ type: "text", nullable: true })
   hint!: string | null;
 
+  @Column({ name: "audio_url", type: "varchar", length: 2048, nullable: true })
+  audioUrl!: string | null;
+
   @Column({ name: "topic_id", type: "uuid" })
   topicId!: string;
 

@@ -20,3 +20,11 @@ export function getOpenAiBaseUrl(): string {
     "",
   );
 }
+
+export function getOpenAiTtsModel(): string {
+  return process.env.OPENAI_TTS_MODEL ?? "tts-1";
+}
+
+export function getOpenAiTtsVoice(): string {
+  return process.env.OPENAI_TTS_VOICE ?? "alloy";
+}
