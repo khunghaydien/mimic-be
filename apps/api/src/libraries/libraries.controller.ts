@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 import { User } from "@app/database";
 import { CurrentUser } from "../auth";
@@ -16,6 +17,7 @@ import { AiService } from "../ai";
 import { CreateLibraryDto } from "./dto/create-library.dto";
 import { GenerateQuestionsDto } from "./dto/generate-questions.dto";
 import { ListLibrariesQueryDto } from "./dto/list-libraries.query.dto";
+import { LibraryOwnerGuard } from "./guards/library-owner.guard";
 import { UpdateLibraryDto } from "./dto/update-library.dto";
 import { UpdateQuestionDto } from "./dto/update-question.dto";
 import { UpdateTopicDto } from "./dto/update-topic.dto";
@@ -41,8 +43,8 @@ export class LibrariesController {
   }
 
   @Get(":id")
-  getById(@CurrentUser() user: User, @Param("id", ParseUUIDPipe) id: string) {
-    return this.librariesQueryService.getById(id, user.id);
+  getById(@Param("id", ParseUUIDPipe) id: string) {
+    return this.librariesQueryService.getById(id);
   }
 
   @Post()
@@ -51,49 +53,45 @@ export class LibrariesController {
   }
 
   @Patch(":id")
+  @UseGuards(LibraryOwnerGuard)
   updateTopic(
-    @CurrentUser() user: User,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateTopicDto,
   ) {
-    return this.librariesCommandService.updateTopic(id, user.id, dto);
+    return this.librariesCommandService.updateTopic(id, dto);
   }
 
   @Put(":id")
+  @UseGuards(LibraryOwnerGuard)
   update(
-    @CurrentUser() user: User,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateLibraryDto,
   ) {
-    return this.librariesCommandService.update(id, user.id, dto);
+    return this.librariesCommandService.update(id, dto);
   }
 
   @Patch(":id/questions/:questionId")
+  @UseGuards(LibraryOwnerGuard)
   updateQuestion(
-    @CurrentUser() user: User,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("questionId", ParseUUIDPipe) questionId: string,
     @Body() dto: UpdateQuestionDto,
   ) {
-    return this.librariesCommandService.updateQuestion(
-      id,
-      questionId,
-      user.id,
-      dto,
-    );
+    return this.librariesCommandService.updateQuestion(id, questionId, dto);
   }
 
   @Delete(":id/questions/:questionId")
+  @UseGuards(LibraryOwnerGuard)
   removeQuestion(
-    @CurrentUser() user: User,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("questionId", ParseUUIDPipe) questionId: string,
   ) {
-    return this.librariesCommandService.removeQuestion(id, questionId, user.id);
+    return this.librariesCommandService.removeQuestion(id, questionId);
   }
 
   @Delete(":id")
-  remove(@CurrentUser() user: User, @Param("id", ParseUUIDPipe) id: string) {
-    return this.librariesCommandService.remove(id, user.id);
+  @UseGuards(LibraryOwnerGuard)
+  remove(@Param("id", ParseUUIDPipe) id: string) {
+    return this.librariesCommandService.remove(id);
   }
 }

@@ -19,12 +19,15 @@ export class LibrariesQueryService {
 
     const qb = this.topicsRepository
       .createQueryBuilder("topic")
-      .leftJoin("topic.creator", "creator")
+      .innerJoin("topic.creator", "creator")
       .addSelect(["creator.id", "creator.name"])
-      .where("topic.creatorId = :creatorId", { creatorId })
       .orderBy("topic.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
+
+    if (query.mine) {
+      qb.andWhere("topic.creatorId = :creatorId", { creatorId });
+    }
 
     if (query.title) {
       qb.andWhere("topic.title ILIKE :title", { title: `%${query.title}%` });
@@ -39,45 +42,40 @@ export class LibrariesQueryService {
       items: topics.map((topic) => ({
         id: topic.id,
         title: topic.title,
-        creator: topic.creator?.name ?? "",
+        creator: topic.creator.name,
         questionCount: questionCounts.get(topic.id) ?? 0,
-        createdAt: this.toUtcIso(topic.createdAt),
-        updatedAt: this.toUtcIso(topic.updatedAt),
+        createdAt: topic.createdAt.toISOString(),
+        updatedAt: topic.updatedAt.toISOString(),
       })),
       meta: { page, limit, total },
     };
   }
 
-  async getById(id: string, creatorId: string) {
+  async getById(id: string) {
     const topic = await this.topicsRepository
       .createQueryBuilder("topic")
-      .leftJoin("topic.creator", "creator")
+      .innerJoin("topic.creator", "creator")
       .addSelect(["creator.id", "creator.name"])
       .where("topic.id = :id", { id })
-      .andWhere("topic.creatorId = :creatorId", { creatorId })
       .getOne();
 
     if (!topic) {
       throw new NotFoundException("Library not found");
     }
 
-    const questions = await this.getQuestionsByTopicId(topic.id);
+    const questions = await this.questionsRepository.find({
+      where: { topicId: topic.id },
+      order: { createdAt: "ASC" },
+    });
 
     return {
       id: topic.id,
       title: topic.title,
-      creator: topic.creator?.name ?? "",
+      creator: topic.creator.name,
       questions: questions.map((question) => this.toQuestion(question)),
-      createdAt: this.toUtcIso(topic.createdAt),
-      updatedAt: this.toUtcIso(topic.updatedAt),
+      createdAt: topic.createdAt.toISOString(),
+      updatedAt: topic.updatedAt.toISOString(),
     };
-  }
-
-  async getQuestionsByTopicId(topicId: string): Promise<Question[]> {
-    return this.questionsRepository.find({
-      where: { topicId },
-      order: { createdAt: "ASC" },
-    });
   }
 
   private async getQuestionCountsByTopicIds(topicIds: string[]) {
@@ -107,12 +105,8 @@ export class LibrariesQueryService {
       content: question.content,
       hint: question.hint,
       audioUrl: question.audioUrl,
-      createdAt: this.toUtcIso(question.createdAt),
-      updatedAt: this.toUtcIso(question.updatedAt),
+      createdAt: question.createdAt.toISOString(),
+      updatedAt: question.updatedAt.toISOString(),
     };
-  }
-
-  private toUtcIso(date: Date): string {
-    return new Date(date).toISOString();
   }
 }

@@ -25,63 +25,50 @@ export class LibrariesCommandService {
   async create(creatorId: string, dto: CreateLibraryDto) {
     const { topicId, questions } =
       await this.topicsRepository.manager.transaction(async (manager) => {
-        const topic = manager.create(Topic, {
-          title: dto.title,
-          creatorId,
-        });
-        const saved = await manager.save(topic);
+        const saved = await manager.save(
+          manager.create(Topic, {
+            title: dto.title,
+            creatorId,
+          }),
+        );
 
         const questions = (dto.questions ?? []).map((item) =>
           manager.create(Question, {
             content: item.content,
-            hint: item.hint?.trim() || null,
+            hint: item.hint ?? null,
             topicId: saved.id,
           }),
         );
-        if (questions.length > 0) {
-          await manager.save(questions);
-        }
+        await manager.save(questions);
 
         return { topicId: saved.id, questions };
       });
 
     await this.syncQuestionsAudio(topicId, questions);
 
-    return this.librariesQueryService.getById(topicId, creatorId);
+    return this.librariesQueryService.getById(topicId);
   }
 
-  async updateTopic(id: string, creatorId: string, dto: UpdateTopicDto) {
-    const topic = await this.getOwnedTopic(id, creatorId);
-    topic.title = dto.title;
-    await this.topicsRepository.save(topic);
-    return this.librariesQueryService.getById(id, creatorId);
+  async updateTopic(id: string, dto: UpdateTopicDto) {
+    await this.topicsRepository.update(id, { title: dto.title });
+    return this.librariesQueryService.getById(id);
   }
 
-  async update(id: string, creatorId: string, dto: UpdateLibraryDto) {
+  async update(id: string, dto: UpdateLibraryDto) {
     await this.topicsRepository.manager.transaction(async (manager) => {
-      const topic = await manager.findOne(Topic, {
-        where: { id, creatorId },
-      });
-      if (!topic) {
-        throw new NotFoundException("Library not found");
-      }
-
-      topic.title = dto.title;
-      await manager.save(topic);
+      await manager.update(Topic, { id }, { title: dto.title });
 
       const existing = await manager.find(Question, { where: { topicId: id } });
-      const incomingIds = dto.questions
-        .map((item) => item.id)
-        .filter((questionId): questionId is string => Boolean(questionId));
-      const keep = new Set(incomingIds);
+      const keep = new Set(
+        dto.questions
+          .map((item) => item.id)
+          .filter((questionId): questionId is string => Boolean(questionId)),
+      );
 
-      const toDelete = existing.filter((item) => !keep.has(item.id));
-      if (toDelete.length > 0) {
-        await manager.remove(toDelete);
-      }
+      await manager.remove(existing.filter((item) => !keep.has(item.id)));
 
       for (const item of dto.questions) {
-        const hint = item.hint?.trim() || null;
+        const hint = item.hint ?? null;
         if (item.id) {
           const question = existing.find((row) => row.id === item.id);
           if (!question) {
@@ -91,12 +78,13 @@ export class LibrariesCommandService {
           question.hint = hint;
           await manager.save(question);
         } else {
-          const question = manager.create(Question, {
-            content: item.content,
-            hint,
-            topicId: id,
-          });
-          await manager.save(question);
+          await manager.save(
+            manager.create(Question, {
+              content: item.content,
+              hint,
+              topicId: id,
+            }),
+          );
         }
       }
     });
@@ -106,16 +94,14 @@ export class LibrariesCommandService {
     });
     await this.syncQuestionsAudio(id, questions);
 
-    return this.librariesQueryService.getById(id, creatorId);
+    return this.librariesQueryService.getById(id);
   }
 
   async updateQuestion(
     libraryId: string,
     questionId: string,
-    creatorId: string,
     dto: UpdateQuestionDto,
   ) {
-    await this.getOwnedTopic(libraryId, creatorId);
     const question = await this.questionsRepository.findOne({
       where: { id: questionId, topicId: libraryId },
     });
@@ -125,19 +111,14 @@ export class LibrariesCommandService {
 
     question.content = dto.content;
     if (dto.hint !== undefined) {
-      question.hint = dto.hint.trim() === "" ? null : dto.hint.trim();
+      question.hint = dto.hint;
     }
     await this.questionsRepository.save(question);
     await this.syncQuestionAudio(libraryId, question);
     return this.librariesQueryService.toQuestion(question);
   }
 
-  async removeQuestion(
-    libraryId: string,
-    questionId: string,
-    creatorId: string,
-  ) {
-    await this.getOwnedTopic(libraryId, creatorId);
+  async removeQuestion(libraryId: string, questionId: string) {
     const result = await this.questionsRepository.delete({
       id: questionId,
       topicId: libraryId,
@@ -148,13 +129,8 @@ export class LibrariesCommandService {
     return { id: questionId };
   }
 
-  async remove(id: string, creatorId: string) {
-    await this.topicsRepository.manager.transaction(async (manager) => {
-      await this.getOwnedTopic(id, creatorId);
-      await manager.delete(Question, { topicId: id });
-      await manager.delete(Topic, { id });
-    });
-
+  async remove(id: string) {
+    await this.topicsRepository.delete({ id });
     return { id };
   }
 
@@ -176,20 +152,10 @@ export class LibrariesCommandService {
   }
 
   private buildSpokenText(content: string, hint: string | null): string {
-    const parts = [`Question. ${content.trim()}`];
-    if (hint?.trim()) {
-      parts.push(`Hint. ${hint.trim()}`);
+    const parts = [`Question. ${content}`];
+    if (hint) {
+      parts.push(`Hint. ${hint}`);
     }
     return parts.join("\n\n");
-  }
-
-  private async getOwnedTopic(id: string, creatorId: string) {
-    const topic = await this.topicsRepository.findOne({
-      where: { id, creatorId },
-    });
-    if (!topic) {
-      throw new NotFoundException("Library not found");
-    }
-    return topic;
   }
 }
