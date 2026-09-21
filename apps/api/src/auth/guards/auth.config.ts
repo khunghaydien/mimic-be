@@ -3,6 +3,12 @@ import type { StringValue } from "ms";
 
 dotenv.config();
 
+export type JwtPayload = {
+  sub: string;
+  email: string;
+  type: "access" | "refresh";
+};
+
 export function getAccessTokenExpiresIn(): StringValue {
   return (process.env.JWT_EXPIRES_IN ?? "15m") as StringValue;
 }

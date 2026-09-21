@@ -1,7 +1,21 @@
-import { ExecutionContext, Injectable } from "@nestjs/common";
+import {
+  createParamDecorator,
+  ExecutionContext,
+  Injectable,
+  SetMetadata,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuthGuard as PassportAuthGuard } from "@nestjs/passport";
-import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import { User } from "@app/database";
+
+export const IS_PUBLIC_KEY = "isPublic";
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): User => {
+    return ctx.switchToHttp().getRequest<{ user: User }>().user;
+  },
+);
 
 @Injectable()
 export class AuthGuard extends PassportAuthGuard("jwt") {

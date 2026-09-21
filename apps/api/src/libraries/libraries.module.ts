@@ -3,10 +3,9 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { Question, Topic } from "@app/database";
 import { AiModule } from "../ai";
 import { StorageModule } from "../storage";
-import { LibraryOwnerGuard } from "./guards/library-owner.guard";
+import { LibrariesGuard } from "./guards/libraries.guard";
 import { LibrariesController } from "./libraries.controller";
-import { LibrariesCommandService } from "./services/libraries-command.service";
-import { LibrariesQueryService } from "./services/libraries-query.service";
+import { LibrariesService } from "./services/libraries.service";
 
 @Module({
   imports: [
@@ -15,6 +14,6 @@ import { LibrariesQueryService } from "./services/libraries-query.service";
     StorageModule,
   ],
   controllers: [LibrariesController],
-  providers: [LibrariesQueryService, LibrariesCommandService, LibraryOwnerGuard],
+  providers: [LibrariesService, LibrariesGuard],
 })
 export class LibrariesModule {}

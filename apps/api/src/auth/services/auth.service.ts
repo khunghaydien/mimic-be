@@ -3,54 +3,56 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { User } from "@app/database";
-import { SafeUser, UsersService } from "../users/users.service";
-import { LoginDto } from "./dto/login.dto";
-import { RegisterDto } from "./dto/register.dto";
-import { JwtPayload } from "./interfaces/jwt-payload.interface";
+import { Repository } from "typeorm";
+import { LoginDto, RegisterDto } from "../dto/auth.dto";
 import {
   getAccessTokenExpiresIn,
   getAccessTokenSecret,
   getRefreshTokenExpiresIn,
   getRefreshTokenSecret,
-} from "./jwt.config";
+  type JwtPayload,
+} from "../guards/auth.config";
 
 const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UsersService,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
     private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.usersService.findByEmail(dto.email);
+    const existing = await this.users.findOne({ where: { email: dto.email } });
     if (existing) {
       throw new ConflictException("Email is already registered");
     }
 
-    const password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const user = await this.usersService.create({
-      name: dto.name,
-      email: dto.email,
-      password,
-      avatarUrl: dto.avatarUrl || null,
-    });
+    const user = await this.users.save(
+      this.users.create({
+        name: dto.name,
+        email: dto.email,
+        password: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+        avatarUrl: dto.avatarUrl ?? null,
+      }),
+    );
 
     return this.issueTokens(user);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.usersService.findByEmailWithPassword(dto.email);
-    if (!user) {
-      throw new UnauthorizedException("Invalid email or password");
-    }
+    const user = await this.users
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.email = :email", { email: dto.email })
+      .getOne();
 
-    const matches = await bcrypt.compare(dto.password, user.password);
-    if (!matches) {
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException("Invalid email or password");
     }
 
@@ -59,16 +61,12 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     const payload = this.verifyRefreshToken(refreshToken);
-    const user = await this.usersService.findById(payload.sub);
+    const user = await this.users.findOne({ where: { id: payload.sub } });
     if (!user) {
       throw new UnauthorizedException("Invalid refresh token");
     }
 
     return this.issueTokens(user);
-  }
-
-  me(user: User): SafeUser {
-    return this.usersService.toSafeUser(user);
   }
 
   private verifyRefreshToken(refreshToken: string): JwtPayload {
@@ -90,9 +88,10 @@ export class AuthService {
 
   private issueTokens(user: User) {
     const claims = { sub: user.id, email: user.email };
+    const { password: _password, ...publicUser } = user;
 
     return {
-      user: this.usersService.toSafeUser(user),
+      user: publicUser,
       accessToken: this.jwtService.sign(
         { ...claims, type: "access" } satisfies JwtPayload,
         {

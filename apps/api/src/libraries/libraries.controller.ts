@@ -5,93 +5,89 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Put,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
 import { User } from "@app/database";
 import { CurrentUser } from "../auth";
-import { AiService } from "../ai";
-import { CreateLibraryDto } from "./dto/create-library.dto";
-import { GenerateQuestionsDto } from "./dto/generate-questions.dto";
-import { ListLibrariesQueryDto } from "./dto/list-libraries.query.dto";
-import { LibraryOwnerGuard } from "./guards/library-owner.guard";
-import { UpdateLibraryDto } from "./dto/update-library.dto";
-import { UpdateQuestionDto } from "./dto/update-question.dto";
-import { UpdateTopicDto } from "./dto/update-topic.dto";
-import { LibrariesCommandService } from "./services/libraries-command.service";
-import { LibrariesQueryService } from "./services/libraries-query.service";
+import {
+  CreateLibraryDto,
+  GenerateQuestionsDto,
+  LibraryQuestionDto,
+  ListLibrariesQueryDto,
+  UpdateLibraryDto,
+  UpdateLibraryTitleDto,
+} from "./dto/libraries.dto";
+import { LibrariesGuard } from "./guards/libraries.guard";
+import { LibrariesService } from "./services/libraries.service";
 
 @Controller("libraries")
 export class LibrariesController {
-  constructor(
-    private readonly librariesQueryService: LibrariesQueryService,
-    private readonly librariesCommandService: LibrariesCommandService,
-    private readonly aiService: AiService,
-  ) {}
+  constructor(private readonly librariesService: LibrariesService) {}
 
   @Get()
   list(@CurrentUser() user: User, @Query() query: ListLibrariesQueryDto) {
-    return this.librariesQueryService.list(user.id, query);
+    return this.librariesService.list(user.id, query);
   }
 
   @Post("generate")
-  generateQuestions(@Body() dto: GenerateQuestionsDto) {
-    return this.aiService.generateLibraryQuestions(dto.title);
+  generate(@Body() dto: GenerateQuestionsDto) {
+    return this.librariesService.generate(dto.title);
   }
 
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
-    return this.librariesQueryService.getById(id);
+    return this.librariesService.getById(id);
   }
 
   @Post()
   create(@CurrentUser() user: User, @Body() dto: CreateLibraryDto) {
-    return this.librariesCommandService.create(user.id, dto);
+    return this.librariesService.create(user.id, dto);
   }
 
   @Patch(":id")
-  @UseGuards(LibraryOwnerGuard)
-  updateTopic(
+  @UseGuards(LibrariesGuard)
+  updateTitle(
     @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateTopicDto,
+    @Body() dto: UpdateLibraryTitleDto,
   ) {
-    return this.librariesCommandService.updateTopic(id, dto);
+    return this.librariesService.updateTitle(id, dto);
   }
 
   @Put(":id")
-  @UseGuards(LibraryOwnerGuard)
+  @UseGuards(LibrariesGuard)
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateLibraryDto,
   ) {
-    return this.librariesCommandService.update(id, dto);
+    return this.librariesService.update(id, dto);
   }
 
   @Patch(":id/questions/:questionId")
-  @UseGuards(LibraryOwnerGuard)
+  @UseGuards(LibrariesGuard)
   updateQuestion(
     @Param("id", ParseUUIDPipe) id: string,
     @Param("questionId", ParseUUIDPipe) questionId: string,
-    @Body() dto: UpdateQuestionDto,
+    @Body() dto: LibraryQuestionDto,
   ) {
-    return this.librariesCommandService.updateQuestion(id, questionId, dto);
+    return this.librariesService.updateQuestion(id, questionId, dto);
   }
 
   @Delete(":id/questions/:questionId")
-  @UseGuards(LibraryOwnerGuard)
+  @UseGuards(LibrariesGuard)
   removeQuestion(
     @Param("id", ParseUUIDPipe) id: string,
     @Param("questionId", ParseUUIDPipe) questionId: string,
   ) {
-    return this.librariesCommandService.removeQuestion(id, questionId);
+    return this.librariesService.removeQuestion(id, questionId);
   }
 
   @Delete(":id")
-  @UseGuards(LibraryOwnerGuard)
+  @UseGuards(LibrariesGuard)
   remove(@Param("id", ParseUUIDPipe) id: string) {
-    return this.librariesCommandService.remove(id);
+    return this.librariesService.remove(id);
   }
 }

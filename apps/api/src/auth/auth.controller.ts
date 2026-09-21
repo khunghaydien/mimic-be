@@ -1,11 +1,8 @@
 import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
 import { User } from "@app/database";
-import { AuthService } from "./auth.service";
-import { CurrentUser } from "./decorators/current-user.decorator";
-import { Public } from "./decorators/public.decorator";
-import { LoginDto } from "./dto/login.dto";
-import { RefreshTokenDto } from "./dto/refresh-token.dto";
-import { RegisterDto } from "./dto/register.dto";
+import { LoginDto, RefreshTokenDto, RegisterDto } from "./dto/auth.dto";
+import { CurrentUser, Public } from "./guards/auth.guard";
+import { AuthService } from "./services/auth.service";
 
 @Controller("auth")
 export class AuthController {
@@ -33,6 +30,6 @@ export class AuthController {
 
   @Get("me")
   me(@CurrentUser() user: User) {
-    return this.authService.me(user);
+    return user;
   }
 }

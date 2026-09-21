@@ -10,7 +10,7 @@ import { Topic, User } from "@app/database";
 import { Repository } from "typeorm";
 
 @Injectable()
-export class LibraryOwnerGuard implements CanActivate {
+export class LibrariesGuard implements CanActivate {
   constructor(
     @InjectRepository(Topic)
     private readonly topicsRepository: Repository<Topic>,
