@@ -68,17 +68,23 @@ export class AnswerService {
     }
 
     const answerId = randomUUID();
+    const filename = file.originalname?.includes(".")
+      ? file.originalname
+      : `${answerId}.m4a`;
+    const mimeType = file.mimetype || "audio/mp4";
     const [audioUrl, caption] = await Promise.all([
       this.storageService.upload({
         key: `libraries/${practice.libraryId}/practices/${practiceId}/answers/${answerId}.mp3`,
         body: file.buffer,
-        contentType: file.mimetype || "audio/mpeg",
+        contentType: mimeType,
       }),
-      this.aiService.speechToText({
-        buffer: file.buffer,
-        filename: file.originalname || `${answerId}.mp3`,
-        mimeType: file.mimetype || "audio/mpeg",
-      }),
+      this.aiService
+        .speechToText({
+          buffer: file.buffer,
+          filename,
+          mimeType,
+        })
+        .catch(() => ""),
     ]);
 
     const saved = await this.answer.save(

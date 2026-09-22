@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { User } from "@app/database";
+import { memoryStorage } from "multer";
 import { CurrentUser } from "../auth";
 import { CreateAnswerDto } from "./dto/answer.dto";
 import { AnswerService } from "./service/answer.service";
@@ -17,7 +18,10 @@ export class AnswerController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor("audio", { limits: { fileSize: 25 * 1024 * 1024 } }),
+    FileInterceptor("audio", {
+      storage: memoryStorage(),
+      limits: { fileSize: 25 * 1024 * 1024 },
+    }),
   )
   submit(
     @CurrentUser() user: User,

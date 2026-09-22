@@ -103,6 +103,7 @@ export class AiService {
           Authorization: `Bearer ${apiKey}`,
         },
         body: form,
+        signal: AbortSignal.timeout(3 * 60 * 1000),
       });
     } catch {
       throw new BadGatewayException("OpenAI transcription request failed");
