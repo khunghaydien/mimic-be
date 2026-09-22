@@ -2,14 +2,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { Topic } from "./topic.entity";
+import { Library } from "./library.entity";
 
 @Entity("questions")
+@Index(["libraryId"])
 export class Question {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -23,12 +25,12 @@ export class Question {
   @Column({ name: "audio_url", type: "varchar", length: 2048, nullable: true })
   audioUrl!: string | null;
 
-  @Column({ name: "topic_id", type: "uuid" })
-  topicId!: string;
+  @Column({ name: "library_id", type: "uuid" })
+  libraryId!: string;
 
-  @ManyToOne(() => Topic, { nullable: false, onDelete: "CASCADE" })
-  @JoinColumn({ name: "topic_id" })
-  topic!: Topic;
+  @ManyToOne(() => Library, { nullable: false, onDelete: "CASCADE" })
+  @JoinColumn({ name: "library_id" })
+  library!: Library;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

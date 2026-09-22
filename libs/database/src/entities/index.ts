@@ -1,8 +1,9 @@
 import { User } from "./user.entity";
-import { Topic } from "./topic.entity";
+import { Library } from "./library.entity";
 import { Question } from "./question.entity";
-export { User, Topic, Question };
+import { Practice } from "./practice.entity";
+import { Answer } from "./answer.entity";
 
+export { User, Library, Question, Practice, Answer };
 
-
-export const DATABASE_ENTITIES = [User, Topic, Question];
+export const DATABASE_ENTITIES = [User, Library, Question, Practice, Answer];

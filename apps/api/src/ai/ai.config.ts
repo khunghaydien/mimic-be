@@ -28,3 +28,7 @@ export function getOpenAiTtsModel(): string {
 export function getOpenAiTtsVoice(): string {
   return process.env.OPENAI_TTS_VOICE ?? "alloy";
 }
+
+export function getOpenAiSttModel(): string {
+  return process.env.OPENAI_STT_MODEL ?? "whisper-1";
+}

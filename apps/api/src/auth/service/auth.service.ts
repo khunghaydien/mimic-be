@@ -15,7 +15,7 @@ import {
   getRefreshTokenExpiresIn,
   getRefreshTokenSecret,
   type JwtPayload,
-} from "../guards/auth.config";
+} from "../guard/auth.config";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -23,18 +23,18 @@ const BCRYPT_ROUNDS = 10;
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private readonly users: Repository<User>,
+    private readonly user: Repository<User>,
     private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.users.findOne({ where: { email: dto.email } });
+    const existing = await this.user.findOne({ where: { email: dto.email } });
     if (existing) {
       throw new ConflictException("Email is already registered");
     }
 
-    const user = await this.users.save(
-      this.users.create({
+    const user = await this.user.save(
+      this.user.create({
         name: dto.name,
         email: dto.email,
         password: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
@@ -46,7 +46,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.users
+    const user = await this.user
       .createQueryBuilder("user")
       .addSelect("user.password")
       .where("user.email = :email", { email: dto.email })
@@ -61,7 +61,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     const payload = this.verifyRefreshToken(refreshToken);
-    const user = await this.users.findOne({ where: { id: payload.sub } });
+    const user = await this.user.findOne({ where: { id: payload.sub } });
     if (!user) {
       throw new UnauthorizedException("Invalid refresh token");
     }

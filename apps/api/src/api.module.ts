@@ -4,7 +4,8 @@ import { DatabaseModule } from "@app/database";
 import { ApiController } from "./api.controller";
 import { AuthModule } from "./auth/auth.module";
 import { HealthModule } from "./health/health.module";
-import { LibrariesModule } from "./libraries/libraries.module";
+import { LibraryModule } from "./library/library.module";
+import { PracticeModule } from "./practice/practice.module";
 
 @Module({
   imports: [
@@ -12,7 +13,8 @@ import { LibrariesModule } from "./libraries/libraries.module";
     DatabaseModule.forRoot(),
     HealthModule,
     AuthModule,
-    LibrariesModule,
+    LibraryModule,
+    PracticeModule,
   ],
   controllers: [ApiController],
 })

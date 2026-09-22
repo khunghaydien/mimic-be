@@ -10,7 +10,7 @@ import { getAccessTokenSecret, type JwtPayload } from "./auth.config";
 export class AuthStrategy extends PassportStrategy(Strategy) {
   constructor(
     @InjectRepository(User)
-    private readonly users: Repository<User>,
+    private readonly user: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -24,7 +24,7 @@ export class AuthStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    const user = await this.users.findOne({ where: { id: payload.sub } });
+    const user = await this.user.findOne({ where: { id: payload.sub } });
     if (!user) {
       throw new UnauthorizedException();
     }

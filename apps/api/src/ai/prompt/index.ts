@@ -6,4 +6,4 @@ export {
   type LibraryQuestionItem,
   type LibraryQuestionKey,
   type LibraryQuestionsResult,
-} from "./library-questions.prompt";
+} from "./library.prompt";

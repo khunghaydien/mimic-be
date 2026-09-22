@@ -6,14 +6,14 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Topic, User } from "@app/database";
+import { Library, User } from "@app/database";
 import { Repository } from "typeorm";
 
 @Injectable()
-export class LibrariesGuard implements CanActivate {
+export class LibraryGuard implements CanActivate {
   constructor(
-    @InjectRepository(Topic)
-    private readonly topicsRepository: Repository<Topic>,
+    @InjectRepository(Library)
+    private readonly library: Repository<Library>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -22,14 +22,14 @@ export class LibrariesGuard implements CanActivate {
       params: { id: string };
     }>();
 
-    const topic = await this.topicsRepository.findOne({
+    const library = await this.library.findOne({
       where: { id: request.params.id },
       select: { id: true, creatorId: true },
     });
-    if (!topic) {
+    if (!library) {
       throw new NotFoundException("Library not found");
     }
-    if (topic.creatorId !== request.user.id) {
+    if (library.creatorId !== request.user.id) {
       throw new ForbiddenException("Only the creator can modify this library");
     }
 

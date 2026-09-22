@@ -7,6 +7,7 @@ import {
   getOpenAiApiKey,
   getOpenAiBaseUrl,
   getOpenAiChatModel,
+  getOpenAiSttModel,
   getOpenAiTtsModel,
   getOpenAiTtsVoice,
 } from "./ai.config";
@@ -14,7 +15,7 @@ import {
   LIBRARY_QUESTION_KEYS,
   buildLibraryQuestionsPrompt,
   type LibraryQuestionsResult,
-} from "./prompts";
+} from "./prompt";
 
 type ChatCompletionResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -71,6 +72,52 @@ export class AiService {
     }
 
     return Buffer.from(await response.arrayBuffer());
+  }
+
+  async speechToText(input: {
+    buffer: Buffer;
+    filename: string;
+    mimeType: string;
+  }): Promise<string> {
+    let apiKey: string;
+    try {
+      apiKey = getOpenAiApiKey();
+    } catch {
+      throw new ServiceUnavailableException("OpenAI is not configured");
+    }
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([new Uint8Array(input.buffer)], { type: input.mimeType }),
+      input.filename,
+    );
+    form.append("model", getOpenAiSttModel());
+    form.append("language", "en");
+
+    let response: Response;
+    try {
+      response = await fetch(`${getOpenAiBaseUrl()}/audio/transcriptions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+      });
+    } catch {
+      throw new BadGatewayException("OpenAI transcription request failed");
+    }
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      text?: string;
+      error?: { message?: string };
+    };
+    if (!response.ok) {
+      throw new BadGatewayException(
+        payload.error?.message || "OpenAI transcription failed",
+      );
+    }
+    return (payload.text ?? "").trim();
   }
 
   private async completeChat(input: {

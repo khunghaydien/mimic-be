@@ -2,27 +2,35 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Library } from "./library.entity";
 import { User } from "./user.entity";
 
-@Entity("topics")
-export class Topic {
+@Entity("practices")
+@Index(["userId"])
+@Index(["libraryId"])
+export class Practice {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "varchar", length: 100 })
-  title!: string;
-
-  @Column({ name: "creator_id", type: "uuid" })
-  creatorId!: string;
+  @Column({ name: "user_id", type: "uuid" })
+  userId!: string;
 
   @ManyToOne(() => User, { nullable: false, onDelete: "RESTRICT" })
-  @JoinColumn({ name: "creator_id" })
-  creator!: User;
+  @JoinColumn({ name: "user_id" })
+  user!: User;
+
+  @Column({ name: "library_id", type: "uuid" })
+  libraryId!: string;
+
+  @ManyToOne(() => Library, { nullable: false, onDelete: "CASCADE" })
+  @JoinColumn({ name: "library_id" })
+  library!: Library;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

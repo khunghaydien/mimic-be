@@ -1,1 +1,1 @@
-export { AuthGuard, CurrentUser, Public } from "./guards/auth.guard";
+export { AuthGuard, CurrentUser, Public } from "./guard/auth.guard";

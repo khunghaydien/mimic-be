@@ -6,7 +6,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -14,24 +13,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Trim, TrimOptional } from "../../auth/dto/transforms";
-
-export class LibraryQuestionDto {
-  @Trim()
-  @IsString()
-  @MinLength(1)
-  content!: string;
-
-  @IsOptional()
-  @TrimOptional()
-  @IsString()
-  hint?: string;
-}
-
-export class SavedLibraryQuestionDto extends LibraryQuestionDto {
-  @IsOptional()
-  @IsUUID()
-  id?: string;
-}
+import { QuestionDto, SavedQuestionDto } from "./question.dto";
 
 export class UpdateLibraryTitleDto {
   @Trim()
@@ -46,27 +28,19 @@ export class CreateLibraryDto extends UpdateLibraryTitleDto {
   @IsArray()
   @ArrayMaxSize(500)
   @ValidateNested({ each: true })
-  @Type(() => LibraryQuestionDto)
-  questions?: LibraryQuestionDto[];
+  @Type(() => QuestionDto)
+  questions?: QuestionDto[];
 }
 
 export class UpdateLibraryDto extends UpdateLibraryTitleDto {
   @IsArray()
   @ArrayMaxSize(500)
   @ValidateNested({ each: true })
-  @Type(() => SavedLibraryQuestionDto)
-  questions!: SavedLibraryQuestionDto[];
+  @Type(() => SavedQuestionDto)
+  questions!: SavedQuestionDto[];
 }
 
-export class GenerateQuestionsDto {
-  @Trim()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(500)
-  title!: string;
-}
-
-export class ListLibrariesQueryDto {
+export class ListLibraryQueryDto {
   @IsOptional()
   @TrimOptional()
   @IsString()

@@ -5,14 +5,14 @@ import { PassportModule } from "@nestjs/passport";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "@app/database";
 import { AuthController } from "./auth.controller";
-import { AuthGuard } from "./guards/auth.guard";
-import { AuthStrategy } from "./guards/auth.strategy";
+import { AuthGuard } from "./guard/auth.guard";
+import { AuthStrategy } from "./guard/auth.strategy";
 import {
   getAccessTokenExpiresIn,
   getAccessTokenSecret,
   getRefreshTokenSecret,
-} from "./guards/auth.config";
-import { AuthService } from "./services/auth.service";
+} from "./guard/auth.config";
+import { AuthService } from "./service/auth.service";
 
 @Module({
   imports: [
