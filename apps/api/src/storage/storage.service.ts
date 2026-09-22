@@ -1,5 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { BadGatewayException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
   getR2AccessKey,
   getR2BucketName,
@@ -25,18 +25,14 @@ export class StorageService {
     body: Buffer;
     contentType: string;
   }): Promise<string> {
-    try {
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: getR2BucketName(),
-          Key: input.key,
-          Body: input.body,
-          ContentType: input.contentType,
-        }),
-      );
-    } catch {
-      throw new BadGatewayException("Storage upload failed");
-    }
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: getR2BucketName(),
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
 
     return `${getR2PublicBaseUrl()}/${input.key}`;
   }

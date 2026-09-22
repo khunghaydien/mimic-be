@@ -18,7 +18,7 @@ export class AnswerController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor("audio", {
+    FileInterceptor("file", {
       storage: memoryStorage(),
       limits: { fileSize: 25 * 1024 * 1024 },
     }),
@@ -27,7 +27,7 @@ export class AnswerController {
     @CurrentUser() user: User,
     @Body() dto: CreateAnswerDto,
     @UploadedFile()
-    file?: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer; originalname: string; mimetype: string },
   ) {
     return this.answerService.submit(
       dto.practiceId,

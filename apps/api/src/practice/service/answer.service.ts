@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Answer, Practice, Question } from "@app/database";
 import { randomUUID } from "crypto";
@@ -44,12 +40,8 @@ export class AnswerService {
     practiceId: string,
     questionId: string,
     userId: string,
-    file?: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer; originalname: string; mimetype: string },
   ) {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException("Audio file is required");
-    }
-
     const [practice, question] = await Promise.all([
       this.practice.findOne({
         where: { id: practiceId, userId },
@@ -68,23 +60,17 @@ export class AnswerService {
     }
 
     const answerId = randomUUID();
-    const filename = file.originalname?.includes(".")
-      ? file.originalname
-      : `${answerId}.m4a`;
-    const mimeType = file.mimetype || "audio/mp4";
     const [audioUrl, caption] = await Promise.all([
       this.storageService.upload({
-        key: `libraries/${practice.libraryId}/practices/${practiceId}/answers/${answerId}.mp3`,
+        key: `libraries/${practice.libraryId}/practices/${practiceId}/answers/${answerId}/${file.originalname}`,
         body: file.buffer,
-        contentType: mimeType,
+        contentType: file.mimetype,
       }),
-      this.aiService
-        .speechToText({
-          buffer: file.buffer,
-          filename,
-          mimeType,
-        })
-        .catch(() => ""),
+      this.aiService.speechToText({
+        buffer: file.buffer,
+        filename: file.originalname,
+        mimeType: file.mimetype,
+      }),
     ]);
 
     const saved = await this.answer.save(
