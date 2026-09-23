@@ -14,7 +14,6 @@ export class AuthStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
       secretOrKey: getAccessTokenSecret(),
     });
   }
@@ -24,7 +23,7 @@ export class AuthStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    const user = await this.user.findOne({ where: { id: payload.sub } });
+    const user = await this.user.findOneBy({ id: payload.sub });
     if (!user) {
       throw new UnauthorizedException();
     }

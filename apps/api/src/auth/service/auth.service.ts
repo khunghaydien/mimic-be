@@ -28,8 +28,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.user.findOne({ where: { email: dto.email } });
-    if (existing) {
+    const taken = await this.user.existsBy({ email: dto.email });
+    if (taken) {
       throw new ConflictException("Email is already registered");
     }
 
@@ -41,71 +41,65 @@ export class AuthService {
         avatarUrl: dto.avatarUrl ?? null,
       }),
     );
-
     return this.issueTokens(user);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.user
-      .createQueryBuilder("user")
-      .addSelect("user.password")
-      .where("user.email = :email", { email: dto.email })
-      .getOne();
-
+    const user = await this.findByEmail(dto.email);
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException("Invalid email or password");
     }
-
     return this.issueTokens(user);
   }
 
   async refresh(refreshToken: string) {
-    const payload = this.verifyRefreshToken(refreshToken);
-    const user = await this.user.findOne({ where: { id: payload.sub } });
+    const payload = this.readRefreshToken(refreshToken);
+    const user = await this.user.findOneBy({ id: payload.sub });
     if (!user) {
       throw new UnauthorizedException("Invalid refresh token");
     }
-
     return this.issueTokens(user);
   }
 
-  private verifyRefreshToken(refreshToken: string): JwtPayload {
+  private findByEmail(email: string) {
+    return this.user
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.email = :email", { email })
+      .getOne();
+  }
+
+  private readRefreshToken(refreshToken: string): JwtPayload {
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: getRefreshTokenSecret(),
       });
-      if (payload.type !== "refresh") {
-        throw new UnauthorizedException("Invalid refresh token");
+      if (payload.type === "refresh") {
+        return payload;
       }
-      return payload;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException("Invalid refresh token");
-    }
+    } catch {}
+    throw new UnauthorizedException("Invalid refresh token");
   }
 
   private issueTokens(user: User) {
-    const claims = { sub: user.id, email: user.email };
-    const { password: _password, ...publicUser } = user;
-
+    const { password: _, ...profile } = user;
     return {
-      user: publicUser,
-      accessToken: this.jwtService.sign(
-        { ...claims, type: "access" } satisfies JwtPayload,
-        {
-          secret: getAccessTokenSecret(),
-          expiresIn: getAccessTokenExpiresIn(),
-        },
-      ),
-      refreshToken: this.jwtService.sign(
-        { ...claims, type: "refresh" } satisfies JwtPayload,
-        {
-          secret: getRefreshTokenSecret(),
-          expiresIn: getRefreshTokenExpiresIn(),
-        },
-      ),
+      user: profile,
+      accessToken: this.sign(user, "access"),
+      refreshToken: this.sign(user, "refresh"),
     };
+  }
+
+  private sign(user: User, type: "access" | "refresh") {
+    const secret =
+      type === "access" ? getAccessTokenSecret() : getRefreshTokenSecret();
+    const expiresIn =
+      type === "access"
+        ? getAccessTokenExpiresIn()
+        : getRefreshTokenExpiresIn();
+    return this.jwtService.sign(
+      { sub: user.id, email: user.email, type } satisfies JwtPayload,
+      { secret, expiresIn },
+    );
   }
 }

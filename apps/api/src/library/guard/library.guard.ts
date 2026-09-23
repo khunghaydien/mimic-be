@@ -32,7 +32,6 @@ export class LibraryGuard implements CanActivate {
     if (library.creatorId !== request.user.id) {
       throw new ForbiddenException("Only the creator can modify this library");
     }
-
     return true;
   }
 }

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Library, Question, User } from "@app/database";
+import { Question, User } from "@app/database";
 import { Repository } from "typeorm";
 
 @Injectable()
@@ -22,20 +22,16 @@ export class QuestionGuard implements CanActivate {
       params: { id: string };
     }>();
 
-    const row = await this.question
-      .createQueryBuilder("question")
-      .innerJoin(Library, "library", "library.id = question.libraryId")
-      .select("library.creatorId", "creatorId")
-      .where("question.id = :id", { id: request.params.id })
-      .getRawOne<{ creatorId: string }>();
-
-    if (!row) {
+    const question = await this.question.findOne({
+      where: { id: request.params.id },
+      relations: { library: true },
+    });
+    if (!question) {
       throw new NotFoundException("Question not found");
     }
-    if (row.creatorId !== request.user.id) {
+    if (question.library.creatorId !== request.user.id) {
       throw new ForbiddenException("Only the creator can modify this library");
     }
-
     return true;
   }
 }

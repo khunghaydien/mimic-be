@@ -34,6 +34,9 @@ export class Answer {
   @Column({ type: "text" })
   caption!: string;
 
+  @Column({ type: "jsonb", nullable: true })
+  grade!: Record<string, unknown> | null;
+
   @Column({ name: "audio_url", type: "varchar", length: 2048 })
   audioUrl!: string;
 

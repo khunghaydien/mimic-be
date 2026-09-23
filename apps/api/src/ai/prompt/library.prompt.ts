@@ -1,19 +1,6 @@
-export const LIBRARY_QUESTIONS_PROMPT_ID = "library-questions";
-
-export const LIBRARY_QUESTIONS_COUNT = 5;
-
-export const LIBRARY_QUESTION_KEYS = ["1", "2", "3", "4", "5"] as const;
-
-export type LibraryQuestionKey = (typeof LIBRARY_QUESTION_KEYS)[number];
-
-export type LibraryQuestionItem = {
-  content: string;
-  hint: string;
-};
-
 export type LibraryQuestionsResult = Record<
-  LibraryQuestionKey,
-  LibraryQuestionItem
+  string,
+  { content: string; hint: string }
 >;
 
 export function buildLibraryQuestionsPrompt(topic: string): {
@@ -22,7 +9,7 @@ export function buildLibraryQuestionsPrompt(topic: string): {
 } {
   return {
     system: `You generate speaking practice cards for a study library.
-Return exactly ${LIBRARY_QUESTIONS_COUNT} distinct items about the given topic.
+Return exactly 5 distinct items about the given topic.
 Write everything in clear, natural English. If the topic is not English, translate it and rewrite the questions in polished English.
 Each item must include:
 - content: a complete, self-contained question ending with a question mark. Rephrase for clarity; do not copy awkward wording.

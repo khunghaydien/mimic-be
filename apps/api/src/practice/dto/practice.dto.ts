@@ -1,6 +1,29 @@
-import { IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from "class-validator";
+import { TrimOptional } from "../../auth/dto/transforms";
 
 export class CreatePracticeDto {
   @IsUUID()
   libraryId!: string;
+}
+
+export class ListPracticeQueryDto {
+  @IsOptional()
+  @TrimOptional()
+  @IsString()
+  @MaxLength(100)
+  title?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }

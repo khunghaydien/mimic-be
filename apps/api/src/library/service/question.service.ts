@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Question } from "@app/database";
-import { EntityManager, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { AiService } from "../../ai";
 import { StorageService } from "../../storage";
 import { QuestionDto, SavedQuestionDto } from "../dto/question.dto";
@@ -21,25 +21,17 @@ export class QuestionService {
     return this.aiService.generateLibraryQuestions(title);
   }
 
-  async list(libraryId: string) {
-    const questions = await this.question.find({
+  list(libraryId: string) {
+    return this.question.find({
       where: { libraryId },
       order: { createdAt: "ASC" },
     });
-    return questions.map((question) => this.toQuestion(question));
   }
 
-  async createMany(
-    libraryId: string,
-    items: QuestionDto[],
-    manager: EntityManager,
-  ) {
-    if (items.length === 0) {
-      return [];
-    }
-    return manager.save(
+  async createMany(libraryId: string, items: QuestionDto[]) {
+    return this.question.save(
       items.map((item) =>
-        manager.create(Question, {
+        this.question.create({
           content: item.content,
           hint: item.hint ?? null,
           libraryId,
@@ -48,111 +40,96 @@ export class QuestionService {
     );
   }
 
-  async replaceAll(
-    libraryId: string,
-    items: SavedQuestionDto[],
-    manager: EntityManager,
-  ) {
-    const existing = await manager.find(Question, { where: { libraryId } });
-    const keep = new Set(
-      items
-        .map((item) => item.id)
-        .filter((questionId): questionId is string => Boolean(questionId)),
-    );
-    const removed = existing.filter((item) => !keep.has(item.id));
-    if (removed.length > 0) {
-      await manager.remove(removed);
-    }
-
-    const toSave: Question[] = [];
-    const toSync: Question[] = [];
-
-    for (const item of items) {
-      const hint = item.hint ?? null;
-      if (item.id) {
-        const question = existing.find((row) => row.id === item.id);
-        if (!question) {
-          throw new NotFoundException("Question not found");
-        }
-        const changed = question.content !== item.content || question.hint !== hint;
-        question.content = item.content;
-        question.hint = hint;
-        toSave.push(question);
-        if (changed) {
-          toSync.push(question);
-        }
-      } else {
-        const question = manager.create(Question, {
-          content: item.content,
-          hint,
-          libraryId,
-        });
-        toSave.push(question);
-        toSync.push(question);
-      }
-    }
-
-    if (toSave.length > 0) {
-      await manager.save(toSave);
-    }
-    return toSync;
+  async replaceAll(libraryId: string, items: SavedQuestionDto[]) {
+    const current = await this.question.find({ where: { libraryId } });
+    await this.deleteRemoved(current, items);
+    return this.saveIncoming(libraryId, current, items);
   }
 
   async update(id: string, dto: QuestionDto) {
-    const question = await this.question.findOne({ where: { id } });
-    if (!question) {
-      throw new NotFoundException("Question not found");
-    }
-
+    const question = await this.question.findOneByOrFail({ id });
     const hint = dto.hint === undefined ? question.hint : dto.hint;
-    const changed = question.content !== dto.content || question.hint !== hint;
+    const contentChanged = question.content !== dto.content;
+    const hintChanged = question.hint !== hint;
     question.content = dto.content;
     question.hint = hint;
-    await this.question.save(question);
-    if (changed) {
+    if (contentChanged || hintChanged) {
       await this.sync([question]);
+    } else {
+      await this.question.save(question);
     }
-    return this.toQuestion(question);
+    return question;
   }
 
   async remove(id: string) {
-    const result = await this.question.delete({ id });
-    if (!result.affected) {
-      throw new NotFoundException("Question not found");
-    }
+    await this.question.delete({ id });
     return { id };
   }
 
   async sync(questions: Question[]) {
     for (let i = 0; i < questions.length; i += TTS_BATCH) {
-      await Promise.all(
-        questions.slice(i, i + TTS_BATCH).map((question) => this.syncOne(question)),
-      );
+      const batch = questions.slice(i, i + TTS_BATCH);
+      await Promise.all(batch.map((question) => this.attachAudio(question)));
+      await this.question.save(batch);
     }
   }
 
-  toQuestion(question: Question) {
-    return {
-      id: question.id,
-      content: question.content,
-      hint: question.hint,
-      audioUrl: question.audioUrl,
-      createdAt: question.createdAt.toISOString(),
-      updatedAt: question.updatedAt.toISOString(),
-    };
+  private async deleteRemoved(
+    current: Question[],
+    items: SavedQuestionDto[],
+  ) {
+    const keepIds = new Set(items.map((item) => item.id).filter(Boolean));
+    const removedIds = current
+      .filter((question) => !keepIds.has(question.id))
+      .map((question) => question.id);
+    if (removedIds.length > 0) {
+      await this.question.delete({ id: In(removedIds) });
+    }
   }
 
-  private async syncOne(question: Question) {
-    const parts = [`Question. ${question.content}`];
-    if (question.hint) {
-      parts.push(`Hint. ${question.hint}`);
-    }
-    const audio = await this.aiService.textToSpeech(parts.join("\n\n"));
+  private async saveIncoming(
+    libraryId: string,
+    current: Question[],
+    items: SavedQuestionDto[],
+  ) {
+    const currentById = new Map(
+      current.map((question) => [question.id, question]),
+    );
+    const needAudio: Question[] = [];
+    const toSave = items.map((item) => {
+      const question = item.id
+        ? currentById.get(item.id)
+        : this.question.create({ libraryId });
+      if (!question) {
+        throw new NotFoundException("Question not found");
+      }
+
+      const hint = item.hint ?? null;
+      const isNew = !item.id;
+      const contentChanged = question.content !== item.content;
+      const hintChanged = question.hint !== hint;
+      if (isNew || contentChanged || hintChanged) {
+        needAudio.push(question);
+      }
+
+      question.content = item.content;
+      question.hint = hint;
+      return question;
+    });
+
+    await this.question.save(toSave);
+    return needAudio;
+  }
+
+  private async attachAudio(question: Question) {
+    const text = question.hint
+      ? `Question. ${question.content}\n\nHint. ${question.hint}`
+      : `Question. ${question.content}`;
+    const audio = await this.aiService.textToSpeech(text);
     question.audioUrl = await this.storageService.upload({
       key: `libraries/${question.libraryId}/questions/${question.id}.mp3`,
       body: audio,
       contentType: "audio/mpeg",
     });
-    await this.question.save(question);
   }
 }
